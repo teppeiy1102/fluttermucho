@@ -10,6 +10,7 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
+      debugShowCheckedModeBanner: false,
       title: 'Audio Player Demo',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(
@@ -40,7 +41,6 @@ class _MyHomePageState extends State<MyHomePage> {
     // 例: {'path': 'assets/audio/your_audio_file.mp3', 'name': 'Your Audio Name'}
   ];
 
-  late ConcatenatingAudioSource _playlist;
 
   int? _currentPlayingAudioSourceIndex;
   bool _isPlaying = false;
@@ -50,47 +50,7 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<double> _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   int _currentSpeedIndex = 2; // 1.0x speed
 
-  @override
-  void initState() {
-    super.initState();
-    _playlist = ConcatenatingAudioSource(
-      children:
-          _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(),
-    );
-    _audioPlayer.setAudioSource(_playlist, preload: false);
-
-    _audioPlayer.playerStateStream.listen((playerState) {
-      if (mounted) {
-        setState(() {
-          _isPlaying = playerState.playing;
-        });
-      }
-    });
-
-    _audioPlayer.currentIndexStream.listen((index) {
-      if (mounted && index != null) {
-        setState(() {
-          _currentPlayingAudioSourceIndex = index;
-        });
-      }
-    });
-
-    _audioPlayer.loopModeStream.listen((loopMode) {
-      if (mounted) {
-        setState(() {
-          _loopMode = loopMode;
-        });
-      }
-    });
-
-    _audioPlayer.shuffleModeEnabledStream.listen((isShuffling) {
-      if (mounted) {
-        setState(() {
-          _isShuffling = isShuffling;
-        });
-      }
-    });
-  }
+  
 
   @override
   void dispose() {
@@ -98,15 +58,55 @@ class _MyHomePageState extends State<MyHomePage> {
     super.dispose();
   }
 
-  void _playAudioAtIndex(int index) async {
-    if (_audioPlayer.audioSource != _playlist) {
-      await _audioPlayer.setAudioSource(_playlist,
-          initialIndex: index, preload: true);
-    } else {
-      await _audioPlayer.seek(Duration.zero, index: index);
+  @override
+void initState() {
+  super.initState();
+  // プレイリストをセット
+  _audioPlayer.setAudioSources(
+    _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(),
+    preload: false,
+  );
+
+  _audioPlayer.playerStateStream.listen((playerState) {
+    if (mounted) {
+      setState(() {
+        _isPlaying = playerState.playing;
+      });
     }
-    _audioPlayer.play();
-  }
+  });
+
+  _audioPlayer.currentIndexStream.listen((index) {
+    if (mounted && index != null) {
+      setState(() {
+        _currentPlayingAudioSourceIndex = index;
+      });
+    }
+  });
+
+  _audioPlayer.loopModeStream.listen((loopMode) {
+    if (mounted) {
+      setState(() {
+        _loopMode = loopMode;
+      });
+    }
+  });
+
+  _audioPlayer.shuffleModeEnabledStream.listen((isShuffling) {
+    if (mounted) {
+      setState(() {
+        _isShuffling = isShuffling;
+      });
+    }
+  });
+}
+
+void _playAudioAtIndex(int index) async {
+  // setAudioSourcesでセット済みなので、seekだけでOK
+  await _audioPlayer.seek(Duration.zero, index: index);
+  _audioPlayer.play();
+}
+
+
 
   void _toggleShuffle() {
     final newShuffleState = !_isShuffling;
