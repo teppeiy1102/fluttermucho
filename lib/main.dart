@@ -1,7 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
+import 'package:google_mobile_ads/google_mobile_ads.dart'; // インポートを追加
+import 'dart:io'; // Platform.isIOS または Platform.isAndroid のために追加
+
 
 void main() {
+  WidgetsFlutterBinding.ensureInitialized(); // runApp の前に必要
+  MobileAds.instance.initialize(); // AdMob SDK を初期化
   runApp(const MyApp());
 }
 
@@ -50,17 +55,48 @@ class _MyHomePageState extends State<MyHomePage> {
   final List<double> _speeds = [0.5, 0.75, 1.0, 1.25, 1.5, 2.0];
   int _currentSpeedIndex = 2; // 1.0x speed
 
-  
+ BannerAd? _bannerAd;
+  bool _isBannerAdLoaded = false;
+
+  // テスト用の広告ユニット ID (実際の ID に置き換えてください)
+  final String _bannerAdUnitId = Platform.isAndroid
+      ? 'ca-app-pub-3940256099942544/6300978111' // Android テスト用 ID
+      : 'ca-app-pub-3940256099942544/2934735716'; // iOS テスト用 ID 
+
+void _loadBannerAd() {
+  _bannerAd = BannerAd(
+    adUnitId: _bannerAdUnitId,
+    request: const AdRequest(),
+    size: AdSize.banner,
+    listener: BannerAdListener(
+      onAdLoaded: (Ad ad) {
+        debugPrint('$BannerAd loaded.');
+        setState(() {
+          _isBannerAdLoaded = true;
+        });
+      },
+      onAdFailedToLoad: (Ad ad, LoadAdError error) {
+        debugPrint('$BannerAd failedToLoad: $error');
+        ad.dispose();
+      },
+      onAdOpened: (Ad ad) => debugPrint('$BannerAd onAdOpened.'),
+      onAdClosed: (Ad ad) => debugPrint('$BannerAd onAdClosed.'),
+      onAdImpression: (Ad ad) => debugPrint('$BannerAd onAdImpression.'),
+    ),
+  )..load();
+}
 
   @override
   void dispose() {
     _audioPlayer.dispose();
+      _bannerAd?.dispose(); // バナー広告を破棄
     super.dispose();
   }
 
   @override
 void initState() {
   super.initState();
+      _loadBannerAd(); // バナー広告をロード
   // プレイリストをセット
   _audioPlayer.setAudioSources(
     _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(),
@@ -155,6 +191,13 @@ void _playAudioAtIndex(int index) async {
     final Color onAppBarColor = Colors.red;
 
     return Scaffold(
+      bottomNavigationBar: _isBannerAdLoaded && _bannerAd != null
+        ? SizedBox(
+            width: _bannerAd!.size.width.toDouble(),
+            height: _bannerAd!.size.height.toDouble(),
+            child: AdWidget(ad: _bannerAd!),
+          )
+        : null, // 広告がロードされていない場合は何も表示しない
       appBar: AppBar(
         backgroundColor: Theme.of(context).colorScheme.inversePrimary,
         title: Text(widget.title, style: TextStyle(color: onAppBarColor)),
