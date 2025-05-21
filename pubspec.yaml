@@ -1,11 +1,11 @@
-name: fluttermucho
+name: MachoCall
 description: "A new Flutter project."
 publish_to: 'none'
 
 version: 1.0.0+1
 
 environment:
-  sdk: ^3.7.2
+  sdk: '>=3.7.0 <4.0.0' 
 
 dependencies:
   flutter:
@@ -13,6 +13,7 @@ dependencies:
   just_audio:
 
   cupertino_icons: ^1.0.8
+  flutter_launcher_icons: ^0.14.3
 
 dev_dependencies:
   flutter_test:
@@ -23,3 +24,11 @@ flutter:
   uses-material-design: true
   assets:
     - assets/audio/
+
+flutter_icons:
+  ios: true
+  image_path: "assets/image/download.jpg"
+  remove_alpha_ios: true
+  android: true
+  adaptive_icon_background: "assets/image/download.jpg"
+  adaptive_icon_foreground: "assets/image/download.jpg"

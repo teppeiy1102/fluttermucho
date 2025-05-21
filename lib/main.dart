@@ -202,7 +202,7 @@ void _playAudioAtIndex(int index) async {
                         : Theme.of(context).colorScheme.secondary,
                   ),
                   title: Text(audioFile['name']!),
-                  subtitle: Text(audioFile['path']!.split('/').last),
+                //  subtitle: Text(audioFile['path']!.split('/').last),
                   selected: isCurrentlyPlayingTrack,
                   selectedTileColor: Theme.of(context).colorScheme.primaryContainer.withOpacity(0.3),
                   onTap: () => _playAudioAtIndex(index),
