@@ -128,6 +128,10 @@ class _MyHomePageState extends State<MyHomePage> {
       preload: false,
     );
 
+    // 初期設定：リピートもシャッフルもオフの場合は1曲だけ再生
+    _audioPlayer.setLoopMode(LoopMode.off);
+    _audioPlayer.setShuffleModeEnabled(false);
+
     _audioPlayer.playerStateStream.listen((playerState) {
       if (mounted) {
         setState(() {
@@ -136,11 +140,17 @@ class _MyHomePageState extends State<MyHomePage> {
       }
     });
 
-    _audioPlayer.currentIndexStream.listen((index) {
-      if (mounted && index != null) {
-        setState(() {
-          _currentPlayingAudioSourceIndex = index;
-        });
+    _audioPlayer.currentIndexStream.listen((streamIndex) {
+      if (mounted && streamIndex != null) {
+        // プレイリストモード（全曲リピート、1曲リピート、またはシャッフルオン）の場合のみ、
+        // ストリームから来たインデックスを現在の再生インデックスとして設定する。
+        // 単一曲再生モード（リピートオフかつシャッフルオフ）の場合は、
+        // _currentPlayingAudioSourceIndex は _playAudioAtIndex で設定された値を維持する。
+        if (_loopMode != LoopMode.off || _isShuffling) {
+          setState(() {
+            _currentPlayingAudioSourceIndex = streamIndex;
+          });
+        }
       }
     });
 
@@ -159,28 +169,82 @@ class _MyHomePageState extends State<MyHomePage> {
         });
       }
     });
+
+    // 曲が終了したときの処理を追加
+    _audioPlayer.processingStateStream.listen((processingState) {
+      if (processingState == ProcessingState.completed) {
+        // リピートもシャッフルもオフの場合は停止
+        if (_loopMode == LoopMode.off && !_isShuffling) {
+          _audioPlayer.stop();
+        }
+      }
+    });
   }
 
   void _playAudioAtIndex(int index) async {
-    await _audioPlayer.seek(Duration.zero, index: index);
-    _audioPlayer.play();
-  }
+    // タップされた曲のインデックスを即座に更新
+    setState(() {
+      _currentPlayingAudioSourceIndex = index;
+    });
 
-  void _toggleShuffle() {
-    final newShuffleState = !_isShuffling;
-    _audioPlayer.setShuffleModeEnabled(newShuffleState);
-  }
-
-  void _toggleRepeat() {
-    LoopMode nextLoopMode;
-    if (_loopMode == LoopMode.off) {
-      nextLoopMode = LoopMode.one;
-    } else if (_loopMode == LoopMode.one) {
-      nextLoopMode = LoopMode.all;
+    if (_loopMode == LoopMode.off && !_isShuffling) {
+      // リピート・シャッフルOFF → 単一曲再生（停止は processingStateStream で行う）
+      await _audioPlayer.setAudioSource(
+        AudioSource.asset(_audioFiles[index]['path']!),
+        preload: false,
+      );
+      await _audioPlayer.setLoopMode(LoopMode.off);
+      await _audioPlayer.setShuffleModeEnabled(false);
+      await _audioPlayer.play();
     } else {
-      nextLoopMode = LoopMode.off;
+      // 全曲リピート・1曲リピート・シャッフル時 → プレイリスト再生
+      await _audioPlayer.setAudioSources(
+        _audioFiles.map((f) => AudioSource.asset(f['path']!)).toList(),
+        preload: false,
+      );
+      await _audioPlayer.setLoopMode(
+        _loopMode == LoopMode.one ? LoopMode.one : LoopMode.all,
+      );
+      await _audioPlayer.setShuffleModeEnabled(_isShuffling);
+      await _audioPlayer.seek(Duration.zero, index: index);
+      await _audioPlayer.play();
     }
-    _audioPlayer.setLoopMode(nextLoopMode);
+  }
+
+  /// シャッフル切り替え
+  void _toggleShuffle() {
+    setState(() {
+      _isShuffling = !_isShuffling;      // 状態を即時反映
+    });
+    _audioPlayer.setShuffleModeEnabled(_isShuffling);
+    _updateLoopMode();
+  }
+
+  /// リピート切り替え
+  void _toggleRepeat() {
+    LoopMode next = 
+      _loopMode == LoopMode.off  ? LoopMode.one  :
+      _loopMode == LoopMode.one  ? LoopMode.all  :
+                                    LoopMode.off;
+    setState(() {
+      _loopMode = next;                  // 状態を即時反映
+    });
+    _audioPlayer.setLoopMode(_loopMode);
+    _updateLoopMode();
+  }
+
+  // 新しいメソッドを追加：ループモードを適切に設定
+  void _updateLoopMode() {
+    if (_loopMode == LoopMode.off && !_isShuffling) {
+      // リピートもシャッフルもオフの場合は、1曲再生後に停止
+      _audioPlayer.setLoopMode(LoopMode.off);
+    } else if (_loopMode == LoopMode.one) {
+      // 1曲リピート
+      _audioPlayer.setLoopMode(LoopMode.one);
+    } else if (_loopMode == LoopMode.all || _isShuffling) {
+      // 全曲リピートまたはシャッフル時
+      _audioPlayer.setLoopMode(LoopMode.all);
+    }
   }
 
   void _changeSpeed() {
@@ -356,7 +420,17 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                               ),
                             ),
+                            IconButton( // 追加: 停止ボタン
+                              icon: Icon(
+                                Icons.stop,
+                                color: _getInactiveIconColor(context), // 必要に応じて色を調整
+                                size: 28,
+                              ),
+                              onPressed: () => _audioPlayer.stop(),
+                              tooltip: 'Stop',
+                            ),
                           ],
+
                         ),
                       ),
                       // プレイリスト
