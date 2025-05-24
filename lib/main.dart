@@ -43,14 +43,37 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final List<Map<String, String>> _audioFiles = [
-    {'path': 'assets/audio/sample1.mp3', 'name': '切れてるよ！'},
-    {'path': 'assets/audio/sample2.mp3', 'name': '冷蔵庫みたい！'},
-    {'path': 'assets/audio/sample3.mp3', 'name': '筋トレは最高！'},
-    {'path': 'assets/audio/sample4.mp3', 'name': 'マッチョサウンズ！'},
-    {'path': 'assets/audio/sample5.mp3', 'name': '筋肉痛が来る！'},
-    {'path': 'assets/audio/sample6.mp3', 'name': '筋トレは楽しい！'},
-  ];
+    {'path': 'assets/audio/decai.mp3', 'name': 'デカいよ'},
+    {'path': 'assets/audio/nicebalc.mp3', 'name': 'ナイスバルク'},
+    {'path': 'assets/audio/kireteru.mp3', 'name': 'キレてる'},
+    {'path': 'assets/audio/senaka.mp3', 'name': '背中に鬼神が宿ってる！'},
+    {'path': 'assets/audio/hukin.mp3', 'name': '腹筋が蟹の裏みたい'},
+    {'path': 'assets/audio/nunega.mp3', 'name': '胸がはち切れそう'},
+    {'path': 'assets/audio/dodai.mp3', 'name': '土台が違うよ土台が！'},
+    {'path': 'assets/audio/chirsmas.mp3', 'name': '背中にクリスマスツリー'},
+    {'path': 'assets/audio/3d.mp3', 'name': '3Dパーツの立体感！'},
+    {'path': 'assets/audio/katameron.mp3', 'name': '肩メロン収穫祭だ！'},
+    {'path': 'assets/audio/soubou.mp3', 'name': '僧帽筋が並みじゃない'},
+    {'path': 'assets/audio/nemurenai.mp3', 'name': 'ここまで絞るには眠れない夜もあっただろ'},
+    {'path': 'assets/audio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
+    {'path': 'assets/audio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
+    {'path': 'assets/audio/pan.mp3', 'name': '腹筋ちぎりパン'},
+ 		{'path': 'assets/audio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
+  	{'path': 'assets/audio/ketu.mp3', 'name': '胸がケツみたい'},
+  	{'path': 'assets/audio/toberu.mp3', 'name': '空も飛べるはず'},
+  	{'path': 'assets/audio/hane.mp3', 'name': '背中に羽が生えてる'},
+  	{'path': 'assets/audio/ashi.mp3', 'name': '脚が歩いてる'},
+		{'path': 'assets/audio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
+	  {'path': 'assets/audio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
+		{'path': 'assets/audio/gori.mp3', 'name': '脚がゴリ'},
 
+  ];
+		
+		
+		
+		
+		
+		
   int? _currentPlayingAudioSourceIndex;
   bool _isPlaying = false;
   bool _isShuffling = false;
@@ -205,7 +228,7 @@ class _MyHomePageState extends State<MyHomePage> {
         elevation: 0,
         title: ShaderMask(
           shaderCallback: (bounds) => const LinearGradient(
-            colors: [Colors.red, Colors.orange],
+            colors: [Colors.red, Colors.blue],
           ).createShader(bounds),
           child: Text(
             widget.title,
@@ -315,7 +338,9 @@ class _MyHomePageState extends State<MyHomePage> {
                               padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors: [Colors.red, Colors.orange],
+                                  begin: Alignment.centerLeft,
+                                  end: Alignment.centerRight,
+                                  colors: [Colors.red, Colors.blue],
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                               ),
@@ -352,10 +377,11 @@ class _MyHomePageState extends State<MyHomePage> {
                                 child: Container(
                                   decoration: BoxDecoration(
                                     gradient: LinearGradient(
+                                      begin: Alignment.topLeft,
                                       colors: isCurrentlyPlayingTrack
                                           ? [
-                                              Colors.red.withOpacity(0.3),
-                                              Colors.orange.withOpacity(0.2),
+                                              Colors.grey.withOpacity(0.3),
+                                              Colors.blue.withOpacity(0.2),
                                             ]
                                           : [
                                               Colors.grey[800]!.withOpacity(0.7),
@@ -377,8 +403,10 @@ class _MyHomePageState extends State<MyHomePage> {
                                       padding: const EdgeInsets.all(8),
                                       decoration: BoxDecoration(
                                         gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
                                           colors: isCurrentlyPlayingTrack && _isPlaying
-                                              ? [Colors.red, Colors.orange]
+                                              ? [Colors.green, Colors.blue]
                                               : [Colors.grey[600]!, Colors.grey[700]!],
                                         ),
                                         borderRadius: BorderRadius.circular(12),
