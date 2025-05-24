@@ -29,7 +29,7 @@
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>GADApplicationIdentifier</key>
-    <string>ca-app-pub-3940256099942544~1458002511</string> <!-- テスト用のIDです。本番用IDに置き換えてください。 -->
+    <string>ca-app-pub-7148683667182672~7174404087</string> <!-- テスト用のIDです。本番用IDに置き換えてください。 -->
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>
