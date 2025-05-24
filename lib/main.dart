@@ -86,7 +86,7 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isBannerAdLoaded = false;
 
   final String _bannerAdUnitId = Platform.isAndroid
-      ? 'ca-app-pub-3940256099942544/6300978111'
+      ? 'ca-app-pub-7148683667182672/6456218782'
       : 'ca-app-pub-7148683667182672/6456218782';
 
   void _loadBannerAd() {
