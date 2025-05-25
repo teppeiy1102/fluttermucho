@@ -58,22 +58,18 @@ class _MyHomePageState extends State<MyHomePage> {
     {'path': 'assets/audio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
     {'path': 'assets/audio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
     {'path': 'assets/audio/pan.mp3', 'name': '腹筋ちぎりパン'},
- 		{'path': 'assets/audio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
-  	{'path': 'assets/audio/ketu.mp3', 'name': '胸がケツみたい'},
-  	{'path': 'assets/audio/toberu.mp3', 'name': '空も飛べるはず'},
-  	{'path': 'assets/audio/hane.mp3', 'name': '背中に羽が生えてる'},
-  	{'path': 'assets/audio/ashi.mp3', 'name': '脚が歩いてる'},
-		{'path': 'assets/audio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
-	  {'path': 'assets/audio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
-		{'path': 'assets/audio/gori.mp3', 'name': '脚がゴリ'},
-
+         {'path': 'assets/audio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
+      {'path': 'assets/audio/ketu.mp3', 'name': '胸がケツみたい'},
+      {'path': 'assets/audio/toberu.mp3', 'name': '空も飛べるはず'},
+      {'path': 'assets/audio/hane.mp3', 'name': '背中に羽が生えてる'},
+      {'path': 'assets/audio/ashi.mp3', 'name': '脚が歩いてる'},
+        {'path': 'assets/audio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
+      {'path': 'assets/audio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
+        {'path': 'assets/audio/gori.mp3', 'name': '脚がゴリラ'},
   ];
-		
-		
-		
-		
-		
-		
+        
+  late final List<AudioSource> _playlistAudioSources; // 追加
+        
   int? _currentPlayingAudioSourceIndex;
   bool _isPlaying = false;
   bool _isShuffling = false;
@@ -88,6 +84,8 @@ class _MyHomePageState extends State<MyHomePage> {
   final String _bannerAdUnitId = Platform.isAndroid
       ? 'ca-app-pub-7148683667182672/5530984071'
       : 'ca-app-pub-7148683667182672/6456218782';
+
+  bool _isAlertDialogShown = false;
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
@@ -123,19 +121,31 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _loadBannerAd();
+
+    _playlistAudioSources = _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(); // 初期化
+
     _audioPlayer.setAudioSources(
-      _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(),
+      _playlistAudioSources, // 初期プレイリスト設定
       preload: false,
     );
 
     // 初期設定：リピートもシャッフルもオフの場合は1曲だけ再生
-    _audioPlayer.setLoopMode(LoopMode.off);
-    _audioPlayer.setShuffleModeEnabled(false);
+    // _audioPlayer.setLoopMode(LoopMode.off); // _playAudioAtIndex で制御するため不要な場合あり
+    // _audioPlayer.setShuffleModeEnabled(false); // _playAudioAtIndex で制御するため不要な場合あり
 
     _audioPlayer.playerStateStream.listen((playerState) {
       if (mounted) {
+        final isPlaying = playerState.playing;
+        // 再生が停止し、アラートが表示されている場合にアラートを閉じる
+        if (_isPlaying && !isPlaying && _isAlertDialogShown) {
+          // playerStateStream のコールバック内で context を安全に使うために rootNavigator を使う
+          if (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+          _isAlertDialogShown = false;
+        }
         setState(() {
-          _isPlaying = playerState.playing;
+          _isPlaying = isPlaying;
         });
       }
     });
@@ -147,9 +157,30 @@ class _MyHomePageState extends State<MyHomePage> {
         // 単一曲再生モード（リピートオフかつシャッフルオフ）の場合は、
         // _currentPlayingAudioSourceIndex は _playAudioAtIndex で設定された値を維持する。
         if (_loopMode != LoopMode.off || _isShuffling) {
+          final previousIndex = _currentPlayingAudioSourceIndex;
           setState(() {
             _currentPlayingAudioSourceIndex = streamIndex;
           });
+
+          // 曲が実際に変わり、アラートの更新が必要な場合
+          if (previousIndex != streamIndex) {
+            // 既存のアラートが表示されていれば閉じる
+            if (_isAlertDialogShown) {
+              if (Navigator.of(context, rootNavigator: true).canPop()) {
+                Navigator.of(context, rootNavigator: true).pop();
+              }
+              _isAlertDialogShown = false; // フラグをリセット
+            }
+
+            // 新しい曲でアラートを再表示 (再生中であることも確認)
+            // playerStateStreamでisPlayingが更新されるのを待つため、
+            // addPostFrameCallbackを使用して次のフレームで実行する
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              if (mounted && _isPlaying && _currentPlayingAudioSourceIndex == streamIndex) {
+                 _showPlayingAlertDialog();
+              }
+            });
+          }
         }
       }
     });
@@ -173,6 +204,14 @@ class _MyHomePageState extends State<MyHomePage> {
     // 曲が終了したときの処理を追加
     _audioPlayer.processingStateStream.listen((processingState) {
       if (processingState == ProcessingState.completed) {
+        // 曲が完了し、アラートが表示されている場合にアラートを閉じる
+        if (_isAlertDialogShown && mounted) { // mounted を追加
+           // processingStateStream のコールバック内で context を安全に使うために rootNavigator を使う
+          if (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+          _isAlertDialogShown = false;
+        }
         // リピートもシャッフルもオフの場合は停止
         if (_loopMode == LoopMode.off && !_isShuffling) {
           _audioPlayer.stop();
@@ -181,32 +220,113 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  void _showPlayingAlertDialog() {
+    if (_currentPlayingAudioSourceIndex == null || !mounted) return;
+
+    // 既にアラートが表示されている場合は何もしない
+    if (_isAlertDialogShown) return;
+
+
+    _isAlertDialogShown = true;
+    showDialog(
+      barrierColor: Colors.black54, // ダイアログの背景色を半透明に
+      context: context,
+      barrierDismissible: false, // アラートの外側をタップしても閉じない
+      builder: (BuildContext dialogContext) { // ダイアログ専用のコンテキスト
+        return AlertDialog(
+          actionsAlignment: MainAxisAlignment.center,
+         alignment: Alignment.center, 
+          title: Center(child: const Text('再生中', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
+          content: Container(
+            constraints: const BoxConstraints(minHeight: 70), // 最大幅を設定
+            child: Text(_audioFiles[_currentPlayingAudioSourceIndex!]['name']!,
+            textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 18, color: Colors.white)),
+          ),
+          actions: <Widget>[
+            Container(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [const Color.fromARGB(255, 189, 189, 189), const Color.fromARGB(255, 139, 138, 138)],
+                ),
+                borderRadius: BorderRadius.circular(5),
+              ),
+              child: TextButton.icon(
+                label: const Text('停止', style: TextStyle(fontSize: 16, color: Colors.black)),
+                icon: const Icon(Icons.stop, size: 24, color: Colors.black),
+                onPressed: () {
+                  _audioPlayer.stop(); // 先にオーディオを停止
+                  // Navigator.of(dialogContext).pop(); // ダイアログを閉じるのは playerStateStream に任せる場合がある
+                                                  // ただし、ユーザーが明示的に停止した場合は即時閉じて良い
+                  if (Navigator.of(dialogContext).canPop()) {
+                    Navigator.of(dialogContext).pop();
+                  }
+                  _isAlertDialogShown = false; // 停止ボタンで閉じたことを明確にする
+                },
+              ),
+            ),
+          ],
+        );
+      },
+    ).then((_) {
+      // ダイアログが（理由を問わず）閉じた後に呼ばれる
+      _isAlertDialogShown = false;
+      // プレイヤーがまだ再生中の場合（例：ダイアログ外タップで閉じられたが、実際には閉じられない設定）、
+      // UIの整合性を保つために停止することが望ましい場合がある。
+      // ただし、barrierDismissible: false のため、このケースは通常発生しない。
+      // もし再生が続いていたら停止するロジックは playerStateStream にもある。
+      if (_audioPlayer.playing && _loopMode == LoopMode.off && !_isShuffling) {
+          // _audioPlayer.stop(); // ここで停止すると、曲の終わりに自動で閉じる挙動と競合する可能性あり
+      }
+    });
+  }
+
   void _playAudioAtIndex(int index) async {
+    // 既にアラートが表示されている場合は閉じる
+    if (_isAlertDialogShown && mounted) {
+      if (Navigator.of(context, rootNavigator: true).canPop()) {
+        Navigator.of(context, rootNavigator: true).pop();
+      }
+      _isAlertDialogShown = false; // 明示的にフラグをリセット
+    }
+
     // タップされた曲のインデックスを即座に更新
     setState(() {
       _currentPlayingAudioSourceIndex = index;
     });
 
+    if (mounted) _showPlayingAlertDialog(); // アラートを再生前に表示
+
+    await _audioPlayer.stop(); // どのモードでも一度停止
+
     if (_loopMode == LoopMode.off && !_isShuffling) {
-      // リピート・シャッフルOFF → 単一曲再生（停止は processingStateStream で行う）
+      // リピート・シャッフルOFF → 単一曲再生
       await _audioPlayer.setAudioSource(
         AudioSource.asset(_audioFiles[index]['path']!),
-        preload: false,
+        preload: false, 
       );
-      await _audioPlayer.setLoopMode(LoopMode.off);
-      await _audioPlayer.setShuffleModeEnabled(false);
+      await _audioPlayer.setLoopMode(LoopMode.off); // 明示的に設定
+      await _audioPlayer.setShuffleModeEnabled(false); // 明示的に設定
       await _audioPlayer.play();
     } else {
       // 全曲リピート・1曲リピート・シャッフル時 → プレイリスト再生
       await _audioPlayer.setAudioSources(
-        _audioFiles.map((f) => AudioSource.asset(f['path']!)).toList(),
+        _playlistAudioSources,
+        initialIndex: index, // 指定した曲から開始
         preload: false,
       );
-      await _audioPlayer.setLoopMode(
-        _loopMode == LoopMode.one ? LoopMode.one : LoopMode.all,
-      );
-      await _audioPlayer.setShuffleModeEnabled(_isShuffling);
-      await _audioPlayer.seek(Duration.zero, index: index);
+
+      // 現在の _loopMode と _isShuffling に基づいてプレイヤーのモードを設定
+      if (_isShuffling) {
+        await _audioPlayer.setLoopMode(LoopMode.all); // シャッフル時は常に全曲リピート
+        await _audioPlayer.setShuffleModeEnabled(true);
+      } else {
+        // _loopMode はこの時点で LoopMode.one または LoopMode.all のはず
+        await _audioPlayer.setLoopMode(_loopMode);
+        await _audioPlayer.setShuffleModeEnabled(false);
+      }
       await _audioPlayer.play();
     }
   }
@@ -347,19 +467,22 @@ class _MyHomePageState extends State<MyHomePage> {
                     children: [
                       // コントロールパネル
                       Container(
-                        margin: const EdgeInsets.all(20),
-                        padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+                        margin: const EdgeInsets.only(top: 0),
+                        padding: const EdgeInsets.symmetric(vertical: 5, horizontal: 20),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
-                              Colors.grey[800]!.withOpacity(0.9),
-                              Colors.grey[900]!.withOpacity(0.9),
+                              const Color.fromARGB(255, 41, 41, 41).withOpacity(0.6),
+                              const Color.fromARGB(255, 25, 25, 25)!.withOpacity(0.8),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(25),
+                          borderRadius: BorderRadius.only(
+                            bottomLeft: Radius.circular(20),
+                            bottomRight: Radius.circular(20),
+                          ),
                           border: Border.all(
                             color: Colors.red.withOpacity(0.3),
-                            width: 1,
+                            width: 0,
                           ),
                           boxShadow: [
                             BoxShadow(
@@ -374,13 +497,13 @@ class _MyHomePageState extends State<MyHomePage> {
                           children: [
                             IconButton(
                               icon: Icon(
-                                _isShuffling ? Icons.shuffle_on : Icons.shuffle,
+                                _isShuffling ? Icons.shuffle : Icons.shuffle,
                                 color: _isShuffling
                                     ? _getActiveIconColor(context)
                                     : _getInactiveIconColor(context),
                                 size: 28,
                               ),
-                              onPressed: _toggleShuffle,
+                              onPressed:_toggleShuffle,
                               tooltip: _isShuffling ? 'Shuffle Off' : 'Shuffle On',
                             ),
                             IconButton(
@@ -420,17 +543,25 @@ class _MyHomePageState extends State<MyHomePage> {
                                 ),
                               ),
                             ),
-                            IconButton( // 追加: 停止ボタン
-                              icon: Icon(
-                                Icons.stop,
-                                color: _getInactiveIconColor(context), // 必要に応じて色を調整
-                                size: 28,
-                              ),
-                              onPressed: () => _audioPlayer.stop(),
-                              tooltip: 'Stop',
-                            ),
+                       //     IconButton( // 追加: 停止ボタン
+                       //       icon: Icon(
+                       //         Icons.stop,
+                       //         color: _getInactiveIconColor(context), // 必要に応じて色を調整
+                       //         size: 28,
+                       //       ),
+                       //       onPressed: () {
+                       //         _audioPlayer.stop();
+                       //         // コントロールパネルの停止ボタンが押されたときもアラートを閉じる
+                       //         if (_isAlertDialogShown && mounted) {
+                       //           if (Navigator.of(context, rootNavigator: true).canPop()) {
+                       //              Navigator.of(context, rootNavigator: true).pop();
+                       //           }
+                       //           _isAlertDialogShown = false;
+                       //         }
+                       //       },
+                       //       tooltip: 'Stop',
+                       //     ),
                           ],
-
                         ),
                       ),
                       // プレイリスト
