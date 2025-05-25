@@ -3,6 +3,10 @@
         android:label="fluttermucho"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher">
+        <meta-data
+            android:name="com.google.android.gms.ads.APPLICATION_ID"
+            android:value="ca-app-pub-7148683667182672~4880840287"/> // テスト用のIDです。本番用IDに置き換えてください。
+            
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -20,10 +24,7 @@
               android:name="io.flutter.embedding.android.NormalTheme"
               android:resource="@style/NormalTheme"
               />
-            <meta-data
-               android:name="com.google.android.gms.ads.APPLICATION_ID"
-               android:value="ca-app-pub-3940256099942544~3347511713"/> // テスト用のIDです。本番用IDに置き換えてください。
-            <intent-filter>
+           <intent-filter>
                 <action android:name="android.intent.action.MAIN"/>
                 <category android:name="android.intent.category.LAUNCHER"/>
             </intent-filter>
