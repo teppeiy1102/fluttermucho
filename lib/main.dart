@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io';
+import 'tabata.dart'; // 追加
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -423,6 +424,20 @@ class _MyHomePageState extends State<MyHomePage> {
             ),
           ),
         ),
+        actions: [ // 追加
+          IconButton(
+            icon: const Icon(Icons.timer_outlined, color: Colors.white),
+            tooltip: 'タバタタイマー',
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => TabataTimerPage(audioFiles: _audioFiles),
+                ),
+              );
+            },
+          ),
+        ],
       ),
       body: Container(
         decoration: BoxDecoration(
