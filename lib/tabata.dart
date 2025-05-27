@@ -544,14 +544,14 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
                 icon: const Icon(Icons.remove_circle_outline, color: Colors.white70),
                 onPressed: _isRunning || value <= minValue
                     ? null
-                    : () => onChanged(value - (label == 'ラウンド:' ? 1 : 5)),
+                    : () => onChanged(value - (label == 'ラウンド:'||label =='準備時間 (秒):'? 1 : 5)),
               ),
               Text('$value', style: const TextStyle(fontSize: 18, color: Colors.white, fontWeight: FontWeight.bold)),
               IconButton(
                 icon: const Icon(Icons.add_circle_outline, color: Colors.white70),
                 onPressed: _isRunning || value >= maxValue
                     ? null
-                    : () => onChanged(value + (label == 'ラウンド:' ? 1 : 5)),
+                    : () => onChanged(value + (label == 'ラウンド:' || label =='準備時間 (秒):' ? 1 : 5)),
               ),
             ],
           ),
