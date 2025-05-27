@@ -625,9 +625,8 @@ class _MyHomePageState extends State<MyHomePage> {
                                         gradient: LinearGradient(
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
-                                          colors: isCurrentlyPlayingTrack && _isPlaying
-                                              ? [Colors.green, Colors.blue]
-                                              : [Colors.grey[600]!, Colors.grey[700]!],
+                                          colors: 
+                                              [Colors.grey[600]!, Colors.grey[700]!],
                                         ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
