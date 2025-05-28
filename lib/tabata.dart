@@ -49,11 +49,17 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
   void initState() {
     super.initState();
     _loadBannerAd();
-    _currentCountdownTime = _countdownDuration; // 初期カウントダウン時間を設定
-    _currentTime = _workDuration; // 初期タイマー時間を設定
+    _currentCountdownTime = _countdownDuration;
+    _currentTime = _workDuration;
     if (widget.audioFiles.isNotEmpty) {
-      _selectedAudioPath = widget.audioFiles.first['path'];
-      _selectedRoundStartAudioPath = widget.audioFiles.first['path']; // 追加: 初期値を設定
+      // デフォルトで最初の曲を選択
+      _selectedRoundStartAudioPath = widget.audioFiles.first['path'];
+      _selectedAudioPath = widget.audioFiles.first['path']; // こちらも同様に初期化
+    } else {
+      // widget.audioFilesが空の場合の処理
+      debugPrint("Audio files list is empty in TabataTimerPage initState.");
+      _selectedRoundStartAudioPath = null;
+      _selectedAudioPath = null;
     }
   }
 
@@ -217,27 +223,47 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
   }
 
   Future<void> _playRoundStartSound() async {
-    if (_selectedRoundStartAudioPath == null && !_playRandomRoundStartSong) return;
     if (_roundStartPlayer.playing) await _roundStartPlayer.stop();
 
     String? pathToPlay;
-    if (_playRandomRoundStartSong && widget.audioFiles.isNotEmpty) {
-      final randomIndex = Random().nextInt(widget.audioFiles.length);
-      pathToPlay = widget.audioFiles[randomIndex]['path'];
+
+    if (_playRandomRoundStartSong) {
+      if (widget.audioFiles.isNotEmpty) {
+        final randomIndex = Random().nextInt(widget.audioFiles.length);
+        pathToPlay = widget.audioFiles[randomIndex]['path'];
+        debugPrint("Playing random round start sound: $pathToPlay");
+      } else {
+        debugPrint("Cannot play random round start sound: audioFiles is empty.");
+        return; // 音声リストが空なら再生しない
+      }
     } else {
       pathToPlay = _selectedRoundStartAudioPath;
+      debugPrint("Playing selected round start sound: $pathToPlay");
     }
 
-    if (pathToPlay != null) {
+    if (pathToPlay != null && pathToPlay.isNotEmpty) {
       try {
+        // アセットパスが 'assets/' で始まっていることを確認（just_audio の標準的な使い方）
+        // もし 'assets/' が含まれていない場合、エラーの原因になることがあります。
+        // 例: if (!pathToPlay.startsWith('assets/')) { pathToPlay = 'assets/' + pathToPlay; }
         await _roundStartPlayer.setAsset(pathToPlay);
-        _roundStartPlayer.play();
+        await _roundStartPlayer.play();
       } catch (e) {
-        debugPrint("Error playing round start sound: $e");
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('ラウンド開始音の再生エラー: ${e.toString()}')),
-        );
+        debugPrint("Error playing round start sound at path '$pathToPlay': $e");
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('ラウンド開始音の再生エラー: $e')),
+          );
+        }
       }
+    } else {
+      debugPrint("Round start sound path is null or empty. Cannot play.");
+      // 必要であれば、ユーザーに通知する処理を追加
+      // if (mounted) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(content: Text('ラウンド開始音が設定されていません。')),
+      //   );
+      // }
     }
   }
 
@@ -320,31 +346,39 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
         padding: const EdgeInsets.all(16.0),
         child: Column( // Main column
           mainAxisAlignment: MainAxisAlignment.center, // タイマー実行中は全体を中央寄せ
+          crossAxisAlignment: CrossAxisAlignment.stretch, // 子要素の幅を最大にするために追加
           children: <Widget>[
             // Timer Display
             Column(
               mainAxisAlignment: MainAxisAlignment.center,
+              crossAxisAlignment: CrossAxisAlignment.center, // 横方向中央揃え
               children: [
                 Text(
                   _isCountingDown
                       ? '準備中...'
                       : (_isWorkTime ? 'WORK' : 'REST'),
+                  textAlign: TextAlign.center, // テキスト自体も中央揃え
                   style: TextStyle(
-                      fontSize: 48,
+                      fontSize: 48, // 例えば、画面幅に応じて調整
                       fontWeight: FontWeight.bold,
                       color: _isCountingDown
                           ? Colors.blueAccent
                           : (_isWorkTime ? Colors.greenAccent : Colors.orangeAccent)),
                 ),
-                Text(
-                  _isCountingDown
-                      ? _currentCountdownTime.toString()
-                      : '${(_currentTime ~/ 60).toString().padLeft(2, '0')}:${(_currentTime % 60).toString().padLeft(2, '0')}',
-                  style: const TextStyle(fontSize: 96, color: Colors.white, fontWeight: FontWeight.bold),
+                FittedBox( // 時刻表示にFittedBoxを適用する例
+                  fit: BoxFit.contain,
+                  child: Text(
+                    _isCountingDown
+                        ? _currentCountdownTime.toString()
+                        : '${(_currentTime ~/ 60).toString().padLeft(2, '0')}:${(_currentTime % 60).toString().padLeft(2, '0')}',
+                    textAlign: TextAlign.center, // テキスト自体も中央揃え
+                    style: const TextStyle(fontSize: 96, color: Colors.white, fontWeight: FontWeight.bold),
+                  ),
                 ),
                 if (!_isCountingDown)
                   Text(
                     'ラウンド: $_currentRound / $_rounds',
+                    textAlign: TextAlign.center, // テキスト自体も中央揃え
                     style: const TextStyle(fontSize: 24, color: Colors.white70),
                   ),
               ],
@@ -352,8 +386,10 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
             const SizedBox(height: 30), // Space between timer and buttons
 
             // Control Buttons
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+            Wrap( // Rowの代わりにWrapを使用
+              alignment: WrapAlignment.spaceEvenly,
+              spacing: 8.0, // 要素間の横スペース
+              runSpacing: 8.0, // 行間の縦スペース
               children: <Widget>[
                 ElevatedButton.icon(
                   icon: Icon(startButtonIcon),
