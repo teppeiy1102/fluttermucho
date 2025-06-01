@@ -2,7 +2,7 @@ name: MachoCall
 description: "MachoCall"
 publish_to: 'none'
 
-version: 1.3.4+5
+version: 1.5.0+6
 
 environment:
   sdk: '>=3.7.0 <4.0.0' 
@@ -26,6 +26,8 @@ flutter:
   assets:
     - assets/audio/
     - assets/image/
+    - assets/image/body/
+
 
 flutter_icons:
   ios: true

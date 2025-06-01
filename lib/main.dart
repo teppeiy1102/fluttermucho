@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:just_audio/just_audio.dart';
 import 'package:google_mobile_ads/google_mobile_ads.dart';
 import 'dart:io';
+import 'dart:math'; // 追加
+import 'package:flutter/services.dart' show rootBundle; // 追加
+import 'dart:convert'; // 追加
 import 'tabata.dart'; // 追加
 
 void main() {
@@ -90,6 +93,8 @@ class _MyHomePageState extends State<MyHomePage> {
       : 'ca-app-pub-7148683667182672/6456218782';
 
   bool _isAlertDialogShown = false;
+  List<String> _bodyImagePaths = []; // 追加
+  final Random _random = Random(); // 追加
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
@@ -125,6 +130,7 @@ class _MyHomePageState extends State<MyHomePage> {
   void initState() {
     super.initState();
     _loadBannerAd();
+    _loadBodyImages(); // 追加
 
     _playlistAudioSources = _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(); // 初期化
 
@@ -224,14 +230,33 @@ class _MyHomePageState extends State<MyHomePage> {
     });
   }
 
+  // asset/image/body/ 内の画像パスを読み込むメソッド
+  Future<void> _loadBodyImages() async {
+    final manifestContent = await rootBundle.loadString('AssetManifest.json');
+    final Map<String, dynamic> manifestMap = json.decode(manifestContent);
+    final imagePaths = manifestMap.keys
+        .where((String key) => key.startsWith('assets/image/body/'))
+        .toList();
+    if (mounted) {
+      setState(() {
+        _bodyImagePaths = imagePaths;
+      });
+    }
+  }
+
   void _showPlayingAlertDialog() {
     if (_currentPlayingAudioSourceIndex == null || !mounted) return;
 
     // 既にアラートが表示されている場合は何もしない
     if (_isAlertDialogShown) return;
 
-
     _isAlertDialogShown = true;
+
+    String? randomImagePath;
+    if (_bodyImagePaths.isNotEmpty) {
+      randomImagePath = _bodyImagePaths[_random.nextInt(_bodyImagePaths.length)];
+    }
+
     showDialog(
       barrierColor: Colors.black54, // ダイアログの背景色を半透明に
       context: context,
@@ -239,13 +264,12 @@ class _MyHomePageState extends State<MyHomePage> {
       builder: (BuildContext dialogContext) { // ダイアログ専用のコンテキスト
         return AlertDialog(
           actionsAlignment: MainAxisAlignment.center,
-         alignment: Alignment.center, 
+          backgroundColor: Colors.black, // ダイアログの背景色を半透明に
+         alignment: Alignment.center,
           title: Center(child: const Text('再生中', style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold))),
-          content: Container(
-            constraints: const BoxConstraints(minHeight: 70), // 最大幅を設定
-            child: Text(_audioFiles[_currentPlayingAudioSourceIndex!]['name']!,
-            textAlign: TextAlign.center,
-                style: const TextStyle(fontSize: 18, color: Colors.white)),
+          content: _ZoomableImageDialogContent( // <-- 変更
+            imagePath: randomImagePath,
+            audioName: _audioFiles[_currentPlayingAudioSourceIndex!]['name']!,
           ),
           actions: <Widget>[
             Container(
@@ -635,7 +659,7 @@ class _MyHomePageState extends State<MyHomePage> {
                                       ),
                                       child: Icon(
                                         isCurrentlyPlayingTrack && _isPlaying
-                                            ? Icons.volume_up
+                                            ? (_isShuffling && _loopMode == LoopMode.all ? Icons.shuffle_on_outlined : Icons.volume_up) // シャッフル中アイコン変更の可能性
                                             : Icons.music_note,
                                         color: Colors.white,
                                         size: 24,
@@ -666,6 +690,80 @@ class _MyHomePageState extends State<MyHomePage> {
           ],
         ),
       ),
+    );
+  }
+}
+
+// 新しい StatefulWidget を追加
+class _ZoomableImageDialogContent extends StatefulWidget {
+  final String? imagePath;
+  final String audioName;
+
+  const _ZoomableImageDialogContent({
+    Key? key,
+    required this.imagePath,
+    required this.audioName,
+  }) : super(key: key);
+
+  @override
+  _ZoomableImageDialogContentState createState() =>
+      _ZoomableImageDialogContentState();
+}
+
+class _ZoomableImageDialogContentState
+    extends State<_ZoomableImageDialogContent>
+    with SingleTickerProviderStateMixin {
+  late AnimationController _controller;
+  late Animation<double> _scaleAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      duration: const Duration(seconds: 10), // ズームにかかる時間
+      vsync: this,
+    )..forward(); // アニメーションを開始
+
+    _scaleAnimation = Tween<double>(begin: 1.0, end: 1.5).animate(
+      CurvedAnimation(
+        parent: _controller,
+        curve: Curves.linear, // ゆっくりズームイン
+      ),
+    );
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        if (widget.imagePath != null)
+          Padding(
+            padding: const EdgeInsets.only(bottom: 15.0),
+            child: ScaleTransition( // <-- ScaleTransition を使用
+              scale: _scaleAnimation,
+              child: Image.asset(
+                widget.imagePath!,
+               // height: 500,
+                fit: BoxFit.contain,
+              ),
+            ),
+          ),
+        Container(
+          constraints: const BoxConstraints(minHeight: 70),
+          child: Text(
+            widget.audioName,
+            textAlign: TextAlign.center,
+            style: const TextStyle(fontSize: 18, color: Colors.white),
+          ),
+        ),
+      ],
     );
   }
 }
