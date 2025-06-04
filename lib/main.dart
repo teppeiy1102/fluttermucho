@@ -134,10 +134,15 @@ class _MyHomePageState extends State<MyHomePage> {
 
     _playlistAudioSources = _audioFiles.map((file) => AudioSource.asset(file['path']!)).toList(); // 初期化
 
-    _audioPlayer.setAudioSources(
-      _playlistAudioSources, // 初期プレイリスト設定
-      preload: false,
-    );
+    // 最初のフレームが描画された後にオーディオソースを設定
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) { //念のためmountedチェック
+        _audioPlayer.setAudioSources(
+          _playlistAudioSources, // 初期プレイリスト設定
+          preload: false,
+        );
+      }
+    });
 
     // 初期設定：リピートもシャッフルもオフの場合は1曲だけ再生
     // _audioPlayer.setLoopMode(LoopMode.off); // _playAudioAtIndex で制御するため不要な場合あり
