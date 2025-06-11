@@ -50,29 +50,29 @@ class MyHomePage extends StatefulWidget {
 class _MyHomePageState extends State<MyHomePage> {
   final AudioPlayer _audioPlayer = AudioPlayer();
   final List<Map<String, String>> _audioFiles = [
-    {'path': 'assets/audio/decai.mp3', 'name': 'デカいよ'},
-    {'path': 'assets/audio/nicebalc.mp3', 'name': 'ナイスバルク'},
-    {'path': 'assets/audio/kireteru.mp3', 'name': 'キレてる'},
-    {'path': 'assets/audio/senaka.mp3', 'name': '背中に鬼神が宿ってる！'},
-    {'path': 'assets/audio/hukin.mp3', 'name': '腹筋が蟹の裏みたい'},
-    {'path': 'assets/audio/nunega.mp3', 'name': '胸がはち切れそう'},
-    {'path': 'assets/audio/dodai.mp3', 'name': '土台が違うよ土台が！'},
-    {'path': 'assets/audio/chirsmas.mp3', 'name': '背中にクリスマスツリー'},
-    {'path': 'assets/audio/3d.mp3', 'name': '3Dパーツの立体感！'},
-    {'path': 'assets/audio/katameron.mp3', 'name': '肩メロン収穫祭だ！'},
-    {'path': 'assets/audio/soubou.mp3', 'name': '僧帽筋が並みじゃない'},
-    {'path': 'assets/audio/nemurenai.mp3', 'name': 'ここまで絞るには眠れない夜もあっただろ'},
-    {'path': 'assets/audio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
-    {'path': 'assets/audio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
-    {'path': 'assets/audio/pan.mp3', 'name': '腹筋ちぎりパン'},
-    {'path': 'assets/audio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
-    {'path': 'assets/audio/ketu.mp3', 'name': '胸がケツみたい'},
-    {'path': 'assets/audio/toberu.mp3', 'name': '空も飛べるはず'},
-    {'path': 'assets/audio/hane.mp3', 'name': '背中に羽が生えてる'},
-    {'path': 'assets/audio/ashi.mp3', 'name': '脚が歩いてる'},
-    {'path': 'assets/audio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
-    {'path': 'assets/audio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
-    {'path': 'assets/audio/gori.mp3', 'name': '脚がゴリラ'},
+    {'path': 'audio/decai.mp3', 'name': 'デカいよ'},
+    {'path': 'audio/nicebalc.mp3', 'name': 'ナイスバルク'},
+    {'path': 'audio/kireteru.mp3', 'name': 'キレてる'},
+    {'path': 'audio/senaka.mp3', 'name': '背中に鬼神が宿ってる！'},
+    {'path': 'audio/hukin.mp3', 'name': '腹筋が蟹の裏みたい'},
+    {'path': 'audio/nunega.mp3', 'name': '胸がはち切れそう'},
+    {'path': 'audio/dodai.mp3', 'name': '土台が違うよ土台が！'},
+    {'path': 'audio/chirsmas.mp3', 'name': '背中にクリスマスツリー'},
+    {'path': 'audio/3d.mp3', 'name': '3Dパーツの立体感！'},
+    {'path': 'audio/katameron.mp3', 'name': '肩メロン収穫祭だ！'},
+    {'path': 'asdio/soubou.mp3', 'name': '僧帽筋が並みじゃない'},
+    {'path': 'asdio/nemurenai.mp3', 'name': 'ここまで絞るには眠れない夜もあっただろ'},
+    {'path': 'asdio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
+    {'path': 'asdio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
+    {'path': 'asdio/pan.mp3', 'name': '腹筋ちぎりパン'},
+    {'path': 'asdio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
+    {'path': 'asdio/ketu.mp3', 'name': '胸がケツみたい'},
+    {'path': 'asdio/toberu.mp3', 'name': '空も飛べるはず'},
+    {'path': 'asdio/hane.mp3', 'name': '背中に羽が生えてる'},
+    {'path': 'asdio/ashi.mp3', 'name': '脚が歩いてる'},
+    {'path': 'asdio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
+    {'path': 'asdio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
+    {'path': 'asdio/gori.mp3', 'name': '脚がゴリラ'},
   ];
 
   int? _currentPlayingAudioSourceIndex;
@@ -138,39 +138,16 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!mounted) return;
       final bool isEffectivelyPlaying = state == PlayerState.playing;
 
-<<<<<<< HEAD
+      // 再生が停止し、アラートが表示されている場合にアラートを閉じる
       if (_isPlaying && !isEffectivelyPlaying && _isAlertDialogShown) {
+        // onPlayerStateChanged のコールバック内で context を安全に使うために rootNavigator を使う
         if (Navigator.of(context, rootNavigator: true).canPop()) {
           Navigator.of(context, rootNavigator: true).pop();
-=======
-    // 最初のフレームが描画された後にオーディオソースを設定
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) { //念のためmountedチェック
-        _audioPlayer.setAudioSources(
-          _playlistAudioSources, // 初期プレイリスト設定
-          preload: false,
-        );
-      }
-    });
-
-    // 初期設定：リピートもシャッフルもオフの場合は1曲だけ再生
-    // _audioPlayer.setLoopMode(LoopMode.off); // _playAudioAtIndex で制御するため不要な場合あり
-    // _audioPlayer.setShuffleModeEnabled(false); // _playAudioAtIndex で制御するため不要な場合あり
-
-    _audioPlayer.playerStateStream.listen((playerState) {
-      if (mounted) {
-        final isPlaying = playerState.playing;
-        // 再生が停止し、アラートが表示されている場合にアラートを閉じる
-        if (_isPlaying && !isPlaying && _isAlertDialogShown) {
-          // playerStateStream のコールバック内で context を安全に使うために rootNavigator を使う
-          if (Navigator.of(context, rootNavigator: true).canPop()) {
-            Navigator.of(context, rootNavigator: true).pop();
-          }
-          _isAlertDialogShown = false;
->>>>>>> refs/remotes/origin/main
         }
         _isAlertDialogShown = false;
       }
+      // _isAlertDialogShown = false; // この行は上のif文ブロック内に移動済み、または不要になる可能性
+
       setState(() {
         _isPlaying = isEffectivelyPlaying;
         if (!isEffectivelyPlaying && _loopMode == CustomLoopMode.off && !_isShuffling) {
