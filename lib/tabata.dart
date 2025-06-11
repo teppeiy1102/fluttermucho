@@ -1,9 +1,9 @@
 import 'dart:async';
 import 'dart:math';
 import 'package:flutter/material.dart';
-import 'package:just_audio/just_audio.dart';
-import 'package:google_mobile_ads/google_mobile_ads.dart'; // 追加
-import 'dart:io'; // 追加
+import 'package:audioplayers/audioplayers.dart'; // just_audio を audioplayers に変更
+import 'package:google_mobile_ads/google_mobile_ads.dart';
+import 'dart:io';
 
 class TabataTimerPage extends StatefulWidget {
   final List<Map<String, String>> audioFiles;
@@ -32,11 +32,11 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
 
   // Audio
   final AudioPlayer _audioPlayer = AudioPlayer();
-  final AudioPlayer _roundStartPlayer = AudioPlayer(); // ラウンド開始音専用プレイヤー
+  final AudioPlayer _roundStartPlayer = AudioPlayer();
   String? _selectedAudioPath;
   bool _playRandomSong = false;
-  String? _selectedRoundStartAudioPath; // 追加: ラウンド開始時の選択曲
-  bool _playRandomRoundStartSong = false; // 追加: ラウンド開始時にランダム再生するか
+  String? _selectedRoundStartAudioPath;
+  bool _playRandomRoundStartSong = false;
 
   // Banner Ad
   BannerAd? _bannerAd;
@@ -223,7 +223,7 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
   }
 
   Future<void> _playRoundStartSound() async {
-    if (_roundStartPlayer.playing) await _roundStartPlayer.stop();
+    if (_roundStartPlayer.state == PlayerState.playing) await _roundStartPlayer.stop();
 
     String? pathToPlay;
 
@@ -234,7 +234,7 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
         debugPrint("Playing random round start sound: $pathToPlay");
       } else {
         debugPrint("Cannot play random round start sound: audioFiles is empty.");
-        return; // 音声リストが空なら再生しない
+        return;
       }
     } else {
       pathToPlay = _selectedRoundStartAudioPath;
@@ -243,11 +243,7 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
 
     if (pathToPlay != null && pathToPlay.isNotEmpty) {
       try {
-        // アセットパスが 'assets/' で始まっていることを確認（just_audio の標準的な使い方）
-        // もし 'assets/' が含まれていない場合、エラーの原因になることがあります。
-        // 例: if (!pathToPlay.startsWith('assets/')) { pathToPlay = 'assets/' + pathToPlay; }
-        await _roundStartPlayer.setAsset(pathToPlay);
-        await _roundStartPlayer.play();
+        await _roundStartPlayer.play(AssetSource(pathToPlay));
       } catch (e) {
         debugPrint("Error playing round start sound at path '$pathToPlay': $e");
         if (mounted) {
@@ -258,18 +254,12 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
       }
     } else {
       debugPrint("Round start sound path is null or empty. Cannot play.");
-      // 必要であれば、ユーザーに通知する処理を追加
-      // if (mounted) {
-      //   ScaffoldMessenger.of(context).showSnackBar(
-      //     const SnackBar(content: Text('ラウンド開始音が設定されていません。')),
-      //   );
-      // }
     }
   }
 
   Future<void> _playRoundEndSoundIfNeeded() async {
     if (_selectedAudioPath == null && !_playRandomSong) return;
-    if (_audioPlayer.playing) await _audioPlayer.stop();
+    if (_audioPlayer.state == PlayerState.playing) await _audioPlayer.stop();
 
     String? pathToPlay;
     if (_playRandomSong && widget.audioFiles.isNotEmpty) {
@@ -281,14 +271,14 @@ class _TabataTimerPageState extends State<TabataTimerPage> {
 
     if (pathToPlay != null) {
       try {
-        await _audioPlayer.setAsset(pathToPlay);
-        _audioPlayer.play();
+        await _audioPlayer.play(AssetSource(pathToPlay));
       } catch (e) {
         debugPrint("Error playing sound: $e");
-        // Handle error, e.g., show a snackbar
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Error playing audio: ${e.toString()}')),
-        );
+        if (mounted) { // mounted を確認
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(content: Text('Error playing audio: ${e.toString()}')),
+          );
+        }
       }
     }
   }
