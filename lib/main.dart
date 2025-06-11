@@ -60,27 +60,24 @@ class _MyHomePageState extends State<MyHomePage> {
     {'path': 'audio/chirsmas.mp3', 'name': '背中にクリスマスツリー'},
     {'path': 'audio/3d.mp3', 'name': '3Dパーツの立体感！'},
     {'path': 'audio/katameron.mp3', 'name': '肩メロン収穫祭だ！'},
-    {'path': 'asdio/soubou.mp3', 'name': '僧帽筋が並みじゃない'},
-    {'path': 'asdio/nemurenai.mp3', 'name': 'ここまで絞るには眠れない夜もあっただろ'},
-    {'path': 'asdio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
-    {'path': 'asdio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
-    {'path': 'asdio/pan.mp3', 'name': '腹筋ちぎりパン'},
-    {'path': 'asdio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
-    {'path': 'asdio/ketu.mp3', 'name': '胸がケツみたい'},
-    {'path': 'asdio/toberu.mp3', 'name': '空も飛べるはず'},
-    {'path': 'asdio/hane.mp3', 'name': '背中に羽が生えてる'},
-    {'path': 'asdio/ashi.mp3', 'name': '脚が歩いてる'},
-    {'path': 'asdio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
-    {'path': 'asdio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
-    {'path': 'asdio/gori.mp3', 'name': '脚がゴリラ'},
+    {'path': 'audio/soubou.mp3', 'name': '僧帽筋が並みじゃない'},
+    {'path': 'audio/nemurenai.mp3', 'name': 'ここまで絞るには眠れない夜もあっただろ'},
+    {'path': 'audio/kabuto.mp3', 'name': '背中がカブトムシの腹だ'},
+    {'path': 'audio/6ldk.mp3', 'name': '腹筋6LDKかい！'},
+    {'path': 'audio/pan.mp3', 'name': '腹筋ちぎりパン'},
+    {'path': 'audio/daicon.mp3', 'name': '腹斜筋で大根おろしたい'},
+    {'path': 'audio/ketu.mp3', 'name': '胸がケツみたい'},
+    {'path': 'audio/toberu.mp3', 'name': '空も飛べるはず'},
+    {'path': 'audio/hane.mp3', 'name': '背中に羽が生えてる'},
+    {'path': 'audio/ashi.mp3', 'name': '脚が歩いてる'},
+    {'path': 'audio/shiagari.mp3', 'name': '仕上がってるよ～仕上がってるよ～'},
+    {'path': 'audio/daikyo.mp3', 'name': '大胸筋が歩いてる'},
+    {'path': 'audio/gori.mp3', 'name': '脚がゴリラ'},
   ];
 
   int? _currentPlayingAudioSourceIndex;
   bool _isPlaying = false;
   bool _isShuffling = false;
-  // LoopMode は audioplayers の ReleaseMode と onPlayerComplete で管理
-  // just_audio の LoopMode とは異なるため、enum を自前で定義するか、
-  // bool isLoopingOne, bool isLoopingAll のようなフラグで管理する方が明確
   CustomLoopMode _loopMode = CustomLoopMode.off;
 
   double _currentSpeed = 1.0;
@@ -97,6 +94,10 @@ class _MyHomePageState extends State<MyHomePage> {
   bool _isAlertDialogShown = false;
   List<String> _bodyImagePaths = [];
   final Random _random = Random();
+
+  // シャッフル再生用のキュー
+  List<int> _shuffledIndices = [];
+  int _currentShuffledQueueIndex = -1;
 
   void _loadBannerAd() {
     _bannerAd = BannerAd(
@@ -138,29 +139,23 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!mounted) return;
       final bool isEffectivelyPlaying = state == PlayerState.playing;
 
-      // 再生が停止し、アラートが表示されている場合にアラートを閉じる
       if (_isPlaying && !isEffectivelyPlaying && _isAlertDialogShown) {
-        // onPlayerStateChanged のコールバック内で context を安全に使うために rootNavigator を使う
         if (Navigator.of(context, rootNavigator: true).canPop()) {
           Navigator.of(context, rootNavigator: true).pop();
         }
         _isAlertDialogShown = false;
       }
-      // _isAlertDialogShown = false; // この行は上のif文ブロック内に移動済み、または不要になる可能性
 
       setState(() {
         _isPlaying = isEffectivelyPlaying;
-        if (!isEffectivelyPlaying && _loopMode == CustomLoopMode.off && !_isShuffling) {
-            // 1曲再生モードで再生が終わったらインデックスをクリアしても良い
-            // _currentPlayingAudioSourceIndex = null; // 必要に応じて
-        }
+        // 1曲再生モード(非シャッフル、非ループ)で再生が終わった場合の処理は onPlayerComplete で行う
       });
+
     });
 
     _audioPlayer.onPlayerComplete.listen((_) {
       if (!mounted) return;
 
-      // アラートを閉じる (onPlayerStateChangedでも対応しているが念のため)
       if (_isAlertDialogShown) {
         if (Navigator.of(context, rootNavigator: true).canPop()) {
           Navigator.of(context, rootNavigator: true).pop();
@@ -168,35 +163,49 @@ class _MyHomePageState extends State<MyHomePage> {
         _isAlertDialogShown = false;
       }
 
-      // ReleaseMode.loop の場合は onPlayerComplete は呼ばれないので、
-      // ここに来るのは CustomLoopMode.one 以外の場合
       if (_isShuffling) {
-        int nextIndex;
-        if (_audioFiles.isEmpty) {
-            setState(() { _isPlaying = false; _currentPlayingAudioSourceIndex = null; });
-            return;
+        if (_shuffledIndices.isEmpty && _audioFiles.isNotEmpty) {
+          _generateShuffledList();
         }
-        if (_audioFiles.length <= 1) {
-          nextIndex = 0; // 1曲しかない場合はそれを再生 (シャッフルだが実質リピート)
+        if (_shuffledIndices.isNotEmpty) {
+          _currentShuffledQueueIndex++;
+          if (_currentShuffledQueueIndex >= _shuffledIndices.length) {
+            if (_loopMode == CustomLoopMode.all) {
+              _generateShuffledList();
+              if (_shuffledIndices.isNotEmpty) {
+                _currentShuffledQueueIndex = 0;
+                _playAudioAtIndex(_shuffledIndices[_currentShuffledQueueIndex], playImmediately: true);
+              } else {
+                setState(() { _isPlaying = false; _currentPlayingAudioSourceIndex = null; });
+              }
+            } else {
+              setState(() { _isPlaying = false; });
+            }
+          } else {
+            _playAudioAtIndex(_shuffledIndices[_currentShuffledQueueIndex], playImmediately: true);
+          }
         } else {
-          do {
-            nextIndex = _random.nextInt(_audioFiles.length);
-          } while (nextIndex == _currentPlayingAudioSourceIndex && _audioFiles.length > 1);
+          setState(() { _isPlaying = false; _currentPlayingAudioSourceIndex = null; });
         }
-        _playAudioAtIndex(nextIndex, playImmediately: true);
+      } else if (_loopMode == CustomLoopMode.one) {
+        // 1曲リピート：同じ曲を再生
+        _playAudioAtIndex(_currentPlayingAudioSourceIndex!, playImmediately: true);
       } else if (_loopMode == CustomLoopMode.all) {
         if (_audioFiles.isEmpty) {
-            setState(() { _isPlaying = false; _currentPlayingAudioSourceIndex = null; });
-            return;
+          setState(() { _isPlaying = false; _currentPlayingAudioSourceIndex = null; });
+          return;
         }
-        int nextIndex = (_currentPlayingAudioSourceIndex! + 1) % _audioFiles.length;
-        _playAudioAtIndex(nextIndex, playImmediately: true);
+        if (_currentPlayingAudioSourceIndex == null && _audioFiles.isNotEmpty) {
+          _currentPlayingAudioSourceIndex = 0;
+        }
+        if (_currentPlayingAudioSourceIndex != null) {
+          int nextIndex = (_currentPlayingAudioSourceIndex! + 1) % _audioFiles.length;
+          _playAudioAtIndex(nextIndex, playImmediately: true);
+        } else if (_audioFiles.isNotEmpty) {
+          _playAudioAtIndex(0, playImmediately: true);
+        }
       } else { // CustomLoopMode.off
-        setState(() {
-          _isPlaying = false;
-          // _currentPlayingAudioSourceIndex はそのままで良いか、null にするか。
-          // just_audio の挙動に合わせるなら、再生終了でインデックスは保持しつつ再生状態が止まる。
-        });
+        setState(() { _isPlaying = false; });
       }
     });
   }
@@ -285,19 +294,17 @@ class _MyHomePageState extends State<MyHomePage> {
   void _playAudioAtIndex(int index, {bool playImmediately = true}) async {
     if (!mounted || _audioFiles.isEmpty || index < 0 || index >= _audioFiles.length) return;
 
-    // 既にアラートが表示されている場合は閉じる
     if (_isAlertDialogShown && mounted) {
       if (Navigator.of(context, rootNavigator: true).canPop()) {
         Navigator.of(context, rootNavigator: true).pop();
       }
-      _isAlertDialogShown = false; // 明示的にフラグをリセット
+      _isAlertDialogShown = false; 
     }
 
     await _audioPlayer.stop();
 
     setState(() {
       _currentPlayingAudioSourceIndex = index;
-      // _isPlaying は onPlayerStateChanged で更新されるが、即時反映のために設定しても良い
       if (playImmediately) _isPlaying = true;
     });
 
@@ -305,25 +312,38 @@ class _MyHomePageState extends State<MyHomePage> {
 
     final source = AssetSource(_audioFiles[index]['path']!);
 
-    if (_loopMode == CustomLoopMode.one && !_isShuffling) {
-      await _audioPlayer.setReleaseMode(ReleaseMode.loop);
-    } else {
-      await _audioPlayer.setReleaseMode(ReleaseMode.release); // onPlayerCompleteで次を制御
-    }
+    // 常にReleaseモードに設定（Repeat OneはonPlayerCompleteでハンドリングする）
+    await _audioPlayer.setReleaseMode(ReleaseMode.release);
     
     if (playImmediately) {
       await _audioPlayer.play(source);
       await _audioPlayer.setPlaybackRate(_currentSpeed);
     } else {
-      // 再生はしないがソースは設定しておく場合（あまりないケースかも）
       await _audioPlayer.setSource(source);
       await _audioPlayer.setPlaybackRate(_currentSpeed);
     }
   }
 
+  void _generateShuffledList() {
+    if (!_isShuffling || _audioFiles.isEmpty) {
+      _shuffledIndices = [];
+      _currentShuffledQueueIndex = -1;
+      return;
+    }
+    _shuffledIndices = List<int>.generate(_audioFiles.length, (i) => i);
+    _shuffledIndices.shuffle(_random);
+    _currentShuffledQueueIndex = -1; // 次に再生する際にインクリメントして0から開始
+  }
+
   void _toggleShuffle() {
     setState(() {
       _isShuffling = !_isShuffling;
+      if (_isShuffling) {
+        _generateShuffledList();
+      } else {
+        _shuffledIndices = [];
+        _currentShuffledQueueIndex = -1;
+      }
     });
     _updatePlayerMode();
   }
@@ -337,18 +357,21 @@ class _MyHomePageState extends State<MyHomePage> {
       } else {
         _loopMode = CustomLoopMode.off;
       }
+      // シャッフル中にリピートモードを変更した場合、次の曲の選択ロジックに影響する
+      // 特に、シャッフルリストの終端に達したときの挙動が変わる
+      if (_isShuffling && _loopMode != CustomLoopMode.all) {
+          // もしシャッフル中で全曲リピートでなくなった場合、
+          // 現在のシャッフルキューを最後まで再生したら止まるようになる。
+          // 必要であれば _generateShuffledList() を呼んでキューをリセットするなどの制御も可能。
+      }
     });
     _updatePlayerMode();
   }
 
   void _updatePlayerMode() {
-    if (_audioPlayer.source == null) return; // まだ何も再生していない場合は何もしない
-
-    if (_loopMode == CustomLoopMode.one && !_isShuffling) {
-      _audioPlayer.setReleaseMode(ReleaseMode.loop);
-    } else {
-      _audioPlayer.setReleaseMode(ReleaseMode.release);
-    }
+    if (_audioPlayer.source == null || _currentPlayingAudioSourceIndex == null) return;
+    // 常にReleaseモードに設定（Repeat Oneの処理はonPlayerCompleteで行うため）
+    _audioPlayer.setReleaseMode(ReleaseMode.release);
   }
 
   void _changeSpeed() {
