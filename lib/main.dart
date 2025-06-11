@@ -138,9 +138,36 @@ class _MyHomePageState extends State<MyHomePage> {
       if (!mounted) return;
       final bool isEffectivelyPlaying = state == PlayerState.playing;
 
+<<<<<<< HEAD
       if (_isPlaying && !isEffectivelyPlaying && _isAlertDialogShown) {
         if (Navigator.of(context, rootNavigator: true).canPop()) {
           Navigator.of(context, rootNavigator: true).pop();
+=======
+    // 最初のフレームが描画された後にオーディオソースを設定
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) { //念のためmountedチェック
+        _audioPlayer.setAudioSources(
+          _playlistAudioSources, // 初期プレイリスト設定
+          preload: false,
+        );
+      }
+    });
+
+    // 初期設定：リピートもシャッフルもオフの場合は1曲だけ再生
+    // _audioPlayer.setLoopMode(LoopMode.off); // _playAudioAtIndex で制御するため不要な場合あり
+    // _audioPlayer.setShuffleModeEnabled(false); // _playAudioAtIndex で制御するため不要な場合あり
+
+    _audioPlayer.playerStateStream.listen((playerState) {
+      if (mounted) {
+        final isPlaying = playerState.playing;
+        // 再生が停止し、アラートが表示されている場合にアラートを閉じる
+        if (_isPlaying && !isPlaying && _isAlertDialogShown) {
+          // playerStateStream のコールバック内で context を安全に使うために rootNavigator を使う
+          if (Navigator.of(context, rootNavigator: true).canPop()) {
+            Navigator.of(context, rootNavigator: true).pop();
+          }
+          _isAlertDialogShown = false;
+>>>>>>> refs/remotes/origin/main
         }
         _isAlertDialogShown = false;
       }
